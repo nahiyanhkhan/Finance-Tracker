@@ -1,6 +1,6 @@
-# Expense Tracker API
+# Finance Tracker API
 
-This is a **Flask-based Expense Tracker API** that allows users to **manage their expenses, track spending, set budgets, and export data** securely.
+This is a **Flask-based Finance Tracker API** that allows users to **manage their expenses, track spending, set budgets, and export data** securely.
 
 ## 🚀 Features Implemented
 
@@ -46,3 +46,19 @@ This is a **Flask-based Expense Tracker API** that allows users to **manage thei
   - Strong password hashing
   - CORS support for frontend integration
   - Input validation 
+
+
+## 📌 API Endpoints Overview
+
+| Endpoint            | Method   | Description                                      | Auth Required |
+|---------------------|---------|--------------------------------------------------|--------------|
+| `/register`        | `POST`  | Register a new user                              | ❌ No |
+| `/login`           | `POST`  | Login and get JWT token                          | ❌ No |
+| `/expenses`        | `POST`  | Add a new expense                                | ✅ Yes |
+| `/expenses`        | `GET`   | Retrieve expenses (filter by category/date)      | ✅ Yes |
+| `/expenses/<id>`   | `PUT`   | Update an expense                               | ✅ Yes |
+| `/expenses/<id>`   | `DELETE`| Delete an expense                               | ✅ Yes |
+| `/expenses/summary`| `GET`   | Get total expenses, breakdown & top categories   | ✅ Yes |
+| `/budget`          | `POST`  | Set a monthly budget                             | ✅ Yes |
+| `/budget/status`   | `GET`   | Check if budget is exceeded                     | ✅ Yes |
+| `/export`          | `GET`   | Download expenses as CSV                        | ✅ Yes |
