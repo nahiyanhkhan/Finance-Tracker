@@ -10,8 +10,9 @@ from flask_cors import CORS
 from database import db, migrate
 from datetime import timedelta, datetime
 from sqlalchemy import func
-import os, csv, re
+import os, csv, re, spacy
 from io import StringIO
+import google.generativeai as generative_ai
 
 app = Flask(__name__)
 
@@ -489,6 +490,121 @@ def export_expenses():
         output,
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment;filename=expenses.csv"},
+    )
+
+
+# Loading NLP model (spaCy)
+nlp = spacy.load("en_core_web_sm")
+
+# Gemini API Key
+generative_ai.configure(api_key="AIzaSyA6zW-XyYl8n4LLMR0aN3U565AJX1UFZgQ")
+
+
+@app.route("/chatbot", methods=["POST"])
+@jwt_required()
+def chatbot():
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+    user_query = data.get("query", "").lower()
+
+    if not user_query:
+        return jsonify({"error": "No query provided"}), 400
+
+    doc = nlp(user_query)
+
+    if "expense" in user_query or "spending" in user_query or "budget" in user_query:
+        model = generative_ai.GenerativeModel(model_name="gemini-pro")
+        prompt = f"Interpret this expense-related query: {user_query}"
+
+        response = model.generate_content(prompt)
+
+        ai_response = response.text.strip()
+        # print(f"DEBUG: AI Response: {ai_response}")
+
+        if "total expenses for" in ai_response:
+            month = re.findall(r"\d{4}-\d{2}", ai_response)
+            query_month = month[0] if month else datetime.utcnow().strftime("%Y-%m")
+
+            total_expenses = (
+                db.session.query(func.sum(Expense.amount))
+                .filter(func.to_char(Expense.date, "YYYY-MM") == query_month)
+                .filter(Expense.user_id == user_id)
+                .scalar()
+                or 0
+            )
+            return jsonify(
+                {
+                    "message": f"Your total expenses for {query_month} are {total_expenses}."
+                }
+            )
+
+        elif "highest expense this month" in ai_response:
+            highest_expense = (
+                db.session.query(Expense.category, func.max(Expense.amount))
+                .filter(Expense.user_id == user_id)
+                .filter(
+                    func.date_trunc("month", Expense.date)
+                    == func.date_trunc("month", func.current_date())
+                )
+                .group_by(Expense.category)
+                .first()
+            )
+            category, amount = highest_expense or ("None", 0)
+            return jsonify(
+                {
+                    "message": f"Your highest expense this month is {amount} in {category}."
+                }
+            )
+
+        elif "list all expenses in category" in ai_response:
+            category_match = re.search(r"in the (\w+) category", ai_response)
+            category = category_match.group(1) if category_match else None
+
+            if category:
+                expenses = Expense.query.filter_by(
+                    user_id=user_id, category=category
+                ).all()
+                expense_list = [
+                    {"amount": exp.amount, "date": exp.date.strftime("%Y-%m-%d")}
+                    for exp in expenses
+                ]
+
+                return jsonify({"category": category, "expenses": expense_list})
+            return jsonify({"error": "Could not determine category."}), 400
+
+    if "set" in user_query and "budget" in user_query:
+        amount = re.findall(r"\d+", user_query)
+        if amount:
+            budget_amount = float(amount[0])
+            current_month = datetime.utcnow().strftime("%Y-%m")
+
+            existing_budget = Budget.query.filter(Budget.user_id == user_id).first()
+
+            if existing_budget:
+                existing_budget.amount = budget_amount
+                existing_budget.month = current_month
+                db.session.commit()
+                return jsonify(
+                    {
+                        "message": f"Budget updated to {budget_amount} for {current_month}!"
+                    }
+                )
+            else:
+                new_budget = Budget(
+                    user_id=user_id, amount=budget_amount, month=current_month
+                )
+                db.session.add(new_budget)
+                db.session.commit()
+                return jsonify(
+                    {"message": f"Budget set to {budget_amount} for {current_month}!"}
+                )
+
+        return jsonify({"error": "Could not understand budget amount."}), 400
+
+    return jsonify(
+        {
+            "message": "I'm not sure how to answer that. Try asking about budget or expenses."
+        }
     )
 
 
