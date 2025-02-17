@@ -18,6 +18,7 @@ This is a **Flask-based Finance Tracker API** that allows users to **manage thei
 | `/budget`          | `POST`  | Set a monthly budget                             | ✅ Yes |
 | `/budget/status`   | `GET`   | Check if budget is exceeded                     | ✅ Yes |
 | `/export`          | `GET`   | Download expenses as CSV                        | ✅ Yes |
+| `/chatbot`         | `POST`  | Chatbot to interact with expenses/budget queries | ✅ Yes |
 
 ## 🚀 Features Implemented
 
@@ -63,3 +64,11 @@ This is a **Flask-based Finance Tracker API** that allows users to **manage thei
   - Strong password hashing
   - CORS support for frontend integration
   - Input validation 
+
+### 8. **Chatbot for Expense/Budget Queries**
+- The `/chatbot` endpoint allows users to interact with an **AI-powered assistant** for expense-related inquiries.
+  - **Expenses-related queries** can include:
+    - Total expenses for a month
+    - Highest expense category for the current month
+    - Listing expenses by category
+  - **Budget-related queries** include setting or updating a monthly budget.
